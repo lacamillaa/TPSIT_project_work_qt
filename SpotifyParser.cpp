@@ -4,6 +4,11 @@ SpotifyParser::SpotifyParser() {}
 
 QJsonObject SpotifyParser::parsePlayback(QJsonObject playback) {
     QJsonObject parse = QJsonObject();
+    if(playback.value("currently_playing_type").toString("") != "track") {
+        parse.insert("is_valid", false);
+        return parse;
+    }
+    parse.insert("is_valid", true);
     parse.insert("is_playing", playback.value("is_playing").toBool());
     parse.insert("offset", playback.value("progress_ms").toInt());
     QJsonObject item = playback.value("item").toObject();

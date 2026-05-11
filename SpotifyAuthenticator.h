@@ -27,6 +27,7 @@ private slots:
     void onReadyRead();
 
 private:
+    SpotifyElaborator *elab;
     QTcpServer *m_server;
     bool is_connected = false;
     QString client_id;
@@ -43,5 +44,4 @@ private:
 
     void exchangeCodeForToken(const QString *queryCode);
     void connectToPlayback(); // gestione dell'intervallo
-    void makeHttpRequest();
 };

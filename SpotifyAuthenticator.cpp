@@ -18,6 +18,7 @@ SpotifyAuthenticator::SpotifyAuthenticator(QString client_id, QString client_sec
     this->client_secret = client_secret;
     this->redirect_uri = redirect_uri;
     m_server = new QTcpServer(this);
+    elab = new SpotifyElaborator(this);
     connect(m_server, &QTcpServer::newConnection, this, &SpotifyAuthenticator::onNewConnection);
 }
 
@@ -98,6 +99,7 @@ void SpotifyAuthenticator::exchangeCodeForToken(const QString *queryCode) {
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
             this->access_token = jsonObj.value("access_token").toString();
+            this->elab->setAccessToken(this->access_token);
             this->refresh_token = jsonObj.value("refresh_token").toString();
             this->scope = jsonObj.value("scope").toString();
             this->expires = QDateTime::currentDateTime().addSecs(
@@ -126,24 +128,5 @@ bool SpotifyAuthenticator::isConnected() {
 void SpotifyAuthenticator::connectToPlayback() {
     this->is_connected = true;
     this->timer.start(1000);
-    connect(&this->timer, &QTimer::timeout, this, &SpotifyAuthenticator::makeHttpRequest);
-}
-
-void SpotifyAuthenticator::makeHttpRequest() {
-    QNetworkRequest request(QUrl("https://api.spotify.com/v1/me/player"));
-    QString tok = "Bearer " + this->access_token;
-    request.setRawHeader("Authorization", tok.toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
-    QNetworkReply *reply = manager.get(request);
-    connect(reply, &QNetworkReply::finished, [reply](){
-        if(reply->error() == QNetworkReply::NoError) {
-            QByteArray response = reply->readAll();
-            QJsonDocument doc = QJsonDocument::fromJson(response);
-            QJsonObject obj = doc.object();
-            QJsonObject result = SpotifyParser::parsePlayback(obj);
-            SpotifyElaborator::returnImageColors(
-                result.value("album_cover").toObject().value("url").toString()
-            );
-        }
-    });
+    connect(&this->timer, &QTimer::timeout, elab, &SpotifyElaborator::makePlaybackRequest);
 }
