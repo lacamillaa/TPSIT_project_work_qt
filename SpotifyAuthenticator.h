@@ -1,3 +1,6 @@
+#include "SpotifyParser.h"
+#include "SpotifyElaborator.h"
+
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QUrl>
@@ -7,6 +10,7 @@
 #include <QDesktopServices>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTimer>
 
 class SpotifyAuthenticator : public QObject {
     Q_OBJECT
@@ -30,8 +34,14 @@ private:
     QString redirect_uri;
     QString access_token;
     QString refresh_token;
+    QString scope;
     QString query_state;
     QString query_code;
     QDateTime expires;
+    QTimer timer = QTimer();
+    QNetworkAccessManager manager = QNetworkAccessManager();
+
     void exchangeCodeForToken(const QString *queryCode);
+    void connectToPlayback(); // gestione dell'intervallo
+    void makeHttpRequest();
 };

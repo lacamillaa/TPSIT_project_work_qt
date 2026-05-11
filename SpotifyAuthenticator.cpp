@@ -30,7 +30,7 @@ void SpotifyAuthenticator::startListening() {
 }
 
 void SpotifyAuthenticator::makeAuthCall() {
-    QString scope = "user-read-private user-read-email";
+    QString scope = "user-read-private user-read-email user-read-playback-state";
     this->query_state = generateRandomString(64);
     QUrl authUrl = QUrl("https://accounts.spotify.com/authorize");
     QUrlQuery queryParams;
@@ -70,7 +70,7 @@ void SpotifyAuthenticator::onReadyRead() {
             QByteArray response = "HTTP/1.1 200 OK\r\n"
                                   "Content-Type: text/html; charset=utf-8\r\n"
                                   "\r\n"
-                                  "<html><body><h1>Autorizzato!</h1>"
+                                  "<html><body><h1>Autorizzazione eseguita con successo!</h1>"
                                   "<p>Puoi chiudere questa scheda e tornare all'app.</p></body></html>";
             socket->write(response);
             socket->flush();
@@ -81,7 +81,6 @@ void SpotifyAuthenticator::onReadyRead() {
 }
 
 void SpotifyAuthenticator::exchangeCodeForToken(const QString *queryCode) {
-    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     QUrl url("https://accounts.spotify.com/api/token");
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
@@ -92,24 +91,24 @@ void SpotifyAuthenticator::exchangeCodeForToken(const QString *queryCode) {
     params.addQueryItem("code", this->query_code);
     params.addQueryItem("redirect_uri", this->redirect_uri);
     params.addQueryItem("grant_type", "authorization_code");
-    QNetworkReply *reply = manager->post(request, params.toString(QUrl::FullyEncoded).toUtf8());
-    connect(reply, &QNetworkReply::finished, [reply, manager, this]() {
+    QNetworkReply *reply = manager.post(request, params.toString(QUrl::FullyEncoded).toUtf8());
+    connect(reply, &QNetworkReply::finished, [reply, this]() {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray responseData = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
             this->access_token = jsonObj.value("access_token").toString();
             this->refresh_token = jsonObj.value("refresh_token").toString();
+            this->scope = jsonObj.value("scope").toString();
             this->expires = QDateTime::currentDateTime().addSecs(
                 jsonObj.value("expires_in").toInt(3600));
-            this->is_connected = true;
+            this->connectToPlayback();
         } else {
             qDebug() << "Errore richiesta Token:" << reply->errorString();
             qDebug() << "Status Code:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
             qDebug() << "Dettagli:" << reply->readAll();
         }
         reply->deleteLater();
-        manager->deleteLater(); // Pulizia
     });
 }
 
@@ -122,4 +121,29 @@ bool SpotifyAuthenticator::isConnected() {
         this->is_connected = false;
     }
     return this->is_connected;
+}
+
+void SpotifyAuthenticator::connectToPlayback() {
+    this->is_connected = true;
+    this->timer.start(1000);
+    connect(&this->timer, &QTimer::timeout, this, &SpotifyAuthenticator::makeHttpRequest);
+}
+
+void SpotifyAuthenticator::makeHttpRequest() {
+    QNetworkRequest request(QUrl("https://api.spotify.com/v1/me/player"));
+    QString tok = "Bearer " + this->access_token;
+    request.setRawHeader("Authorization", tok.toUtf8());
+    request.setRawHeader("Content-Type", "application/json");
+    QNetworkReply *reply = manager.get(request);
+    connect(reply, &QNetworkReply::finished, [reply](){
+        if(reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            QJsonDocument doc = QJsonDocument::fromJson(response);
+            QJsonObject obj = doc.object();
+            QJsonObject result = SpotifyParser::parsePlayback(obj);
+            SpotifyElaborator::returnImageColors(
+                result.value("album_cover").toObject().value("url").toString()
+            );
+        }
+    });
 }

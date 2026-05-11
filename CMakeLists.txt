@@ -35,6 +35,9 @@ qt_add_executable(qt-interface
 MANUAL_FINALIZATION
 ${PROJECT_SOURCES}
 SpotifyAuthenticator.h SpotifyAuthenticator.cpp
+SpotifyParser.h
+SpotifyParser.h SpotifyParser.cpp
+SpotifyElaborator.h SpotifyElaborator.cpp
 )
 else()
 add_executable(qt-interface
