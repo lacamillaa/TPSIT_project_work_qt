@@ -102,8 +102,9 @@ void SpotifyAuthenticator::exchangeCodeForToken(const QString *queryCode) {
             this->elab->setAccessToken(this->access_token);
             this->refresh_token = jsonObj.value("refresh_token").toString();
             this->scope = jsonObj.value("scope").toString();
-            this->expires = QDateTime::currentDateTime().addSecs(
-                jsonObj.value("expires_in").toInt(3600));
+            int exp = jsonObj.value("expires_in").toInt(3600);
+            this->expires = QDateTime::currentDateTime().addSecs(exp);
+            this->timer.singleShot((exp - 60) * 1000, this, &SpotifyAuthenticator::refreshToken);
             this->connectToPlayback();
         } else {
             qDebug() << "Errore richiesta Token:" << reply->errorString();
@@ -114,13 +115,52 @@ void SpotifyAuthenticator::exchangeCodeForToken(const QString *queryCode) {
     });
 }
 
+void SpotifyAuthenticator::refreshToken() {
+    const long long secs_retry = 10;
+    QDateTime moment = QDateTime::currentDateTime();
+    if(this->expires.isValid() && moment >= this->expires.addSecs(-secs_retry)) {
+        // mancano - di 10 secondi alla scadenza
+        this->disconnectUser();
+        return;
+    }
+    QUrl refresh_url("https://accounts.spotify.com/api/token");
+    QUrlQuery query;
+    query.addQueryItem("grant_type", "refresh_token");
+    query.addQueryItem("refresh_token", this->refresh_token);
+    QNetworkRequest req = QNetworkRequest(refresh_url);
+    req.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
+    QNetworkReply *reply = manager.post(req, query.toString(QUrl::FullyEncoded).toUtf8());
+    connect(reply, &QNetworkReply::finished, this, [this, reply, secs_retry](){
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray responseData = reply->readAll();
+            QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+            QJsonObject jsonObj = jsonDoc.object();
+            this->access_token = jsonObj.value("access_token").toString();
+            this->elab->setAccessToken(this->access_token);
+            this->refresh_token = jsonObj.value("refresh_token").toString();
+            this->scope = jsonObj.value("scope").toString();
+            int exp = jsonObj.value("expires_in").toInt(3600);
+            this->expires = QDateTime::currentDateTime().addSecs(exp);
+            this->timer.singleShot((exp - 60) * 1000, this, &SpotifyAuthenticator::refreshToken);
+            this->connectToPlayback();
+        }
+        else {
+            qDebug() << "ERRORE nel refresh";
+            // riprova dopo 15 secondi
+            const int secs_retry = 10;
+            this->timer.singleShot(secs_retry * 1000, this, &SpotifyAuthenticator::refreshToken);
+        }
+    });
+}
+
 void SpotifyAuthenticator::disconnectUser() {
+    this->timer.stop();
     this->is_connected = false;
 }
 
 bool SpotifyAuthenticator::isConnected() {
     if (this->expires < QDateTime::currentDateTime()) {
-        this->is_connected = false;
+        this->disconnectUser();
     }
     return this->is_connected;
 }

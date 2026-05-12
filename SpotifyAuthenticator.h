@@ -44,4 +44,5 @@ private:
 
     void exchangeCodeForToken(const QString *queryCode);
     void connectToPlayback(); // gestione dell'intervallo
+    void refreshToken();
 };
