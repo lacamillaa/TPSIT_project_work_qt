@@ -15,8 +15,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Trova Qt (Core, GUI, Widgets, Network)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Network WebView)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Network WebView)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Network WebView SerialPort)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Network WebView SerialPort)
 
 # File del progetto
 
@@ -26,6 +26,11 @@ set(PROJECT_SOURCES
     mainwindow.h
     mainwindow.ui
     SpotifyAuthenticator.h
+    SpotifyAuthenticator.cpp
+    SpotifyParser.h
+    SpotifyParser.cpp
+    SpotifyElaborator.h
+    SpotifyElaborator.cpp
 )
 
 # Creazione eseguibile
@@ -34,10 +39,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 qt_add_executable(qt-interface
 MANUAL_FINALIZATION
 ${PROJECT_SOURCES}
-SpotifyAuthenticator.h SpotifyAuthenticator.cpp
-SpotifyParser.h
-SpotifyParser.h SpotifyParser.cpp
-SpotifyElaborator.h SpotifyElaborator.cpp
 )
 else()
 add_executable(qt-interface
@@ -53,6 +54,7 @@ Qt${QT_VERSION_MAJOR}::Gui
 Qt${QT_VERSION_MAJOR}::Widgets
 Qt${QT_VERSION_MAJOR}::Network
 Qt${QT_VERSION_MAJOR}::WebView
+Qt${QT_VERSION_MAJOR}::SerialPort
 )
 
 # Proprietà (Windows/macOS bundle)

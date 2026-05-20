@@ -16,7 +16,7 @@ class SpotifyAuthenticator : public QObject {
     Q_OBJECT
 public:
     explicit SpotifyAuthenticator(QString client_id, QString client_secret,
-        QString redirect_uri);
+        QString redirect_uri, QString lastfm_api);
     void startListening();
     void makeAuthCall();
     void disconnectUser();
@@ -33,6 +33,7 @@ private:
     QString client_id;
     QString client_secret;
     QString redirect_uri;
+    QString lastfm_api;
     QString access_token;
     QString refresh_token;
     QString scope;

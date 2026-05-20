@@ -13,12 +13,14 @@ QString generateRandomString(int length) {
 }
 
 SpotifyAuthenticator::SpotifyAuthenticator(QString client_id, QString client_secret,
-    QString redirect_uri) {
+    QString redirect_uri, QString lastfm) {
     this->client_id = client_id;
     this->client_secret = client_secret;
     this->redirect_uri = redirect_uri;
+    this->lastfm_api = lastfm;
     m_server = new QTcpServer(this);
     elab = new SpotifyElaborator(this);
+    elab->setLastFMKey(lastfm);
     connect(m_server, &QTcpServer::newConnection, this, &SpotifyAuthenticator::onNewConnection);
 }
 
@@ -137,6 +139,7 @@ void SpotifyAuthenticator::refreshToken() {
             QJsonObject jsonObj = jsonDoc.object();
             this->access_token = jsonObj.value("access_token").toString();
             this->elab->setAccessToken(this->access_token);
+            qDebug() << this->access_token;
             this->refresh_token = jsonObj.value("refresh_token").toString();
             this->scope = jsonObj.value("scope").toString();
             int exp = jsonObj.value("expires_in").toInt(3600);

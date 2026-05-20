@@ -25,12 +25,14 @@ int main(int argc, char *argv[]) {
     QString client_id = input.readLine().trimmed().split("=")[1];
     QString client_secret = input.readLine().trimmed().split("=")[1];
     QString redirect_uri = input.readLine().trimmed().split("=")[1];
+    QString lastfm_api = input.readLine().trimmed().split("=")[1];
     file.close();
 
     QApplication app(argc, argv);
     MainWindow window;
 
-    SpotifyAuthenticator auth = SpotifyAuthenticator(client_id, client_secret, redirect_uri);
+    SpotifyAuthenticator auth = SpotifyAuthenticator(client_id, client_secret,
+                                                     redirect_uri, lastfm_api);
     auth.startListening();
     auth.makeAuthCall();
 

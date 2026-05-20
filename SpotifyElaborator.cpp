@@ -6,25 +6,27 @@ SpotifyElaborator::SpotifyElaborator(QObject *parent) {
     this->manager = new QNetworkAccessManager();
     this->timer = new QTimer();
     this->interval_timer = new QTimer();
-    const int interval = 200;
     connect(interval_timer, &QTimer::timeout, this, [this](){
         if(this->local_is_playing) {
-            this->local_progress += interval;
+            this->local_progress += this->interval;
         }
     });
-    this->interval_timer->start(interval);
+    this->interval_timer->start(this->interval);
 }
 
 void SpotifyElaborator::resetTimer(int newTimeout) {
     this->timer->stop();
-    timer->singleShot(newTimeout, this, [this](){
+    this->timer->singleShot(newTimeout, this, [this](){
         this->interval_timer->stop();
-        qDebug() << "fine traccia!";
     });
 }
 
 void SpotifyElaborator::setAccessToken(QString access_token) {
     this->access_token = access_token;
+}
+
+void SpotifyElaborator::setLastFMKey(QString api_key) {
+    this->lastfm_key = api_key;
 }
 
 void SpotifyElaborator::makePlaybackRequest() {
@@ -63,22 +65,62 @@ void SpotifyElaborator::makePlaybackRequest() {
                 else {
                     this->local_progress = fmax(this->local_progress, offset);
                 }
-                local_progress = fmin(local_progress, duration);
+                this->local_progress = fmin(this->local_progress, duration);
             }
             else {
-                this->resetTimer(duration - offset);
+                this->timer->stop();
                 this->currently_playing = id;
                 QString track_name = result.value("name").toString();
                 QString main_artist = result.value("main_artist").toString();
+                QString artist_names = result.value("artists_names").toString();
+                qDebug() << artist_names;
                 qDebug() << "Now playing: " + track_name + " by " + main_artist;
                 this->local_progress = result.value("offset").toInt();
-                this->returnImageColor(
+                analyzeAudio(track_name, artist_names);
+                /*this->returnImageColor(
                     result.value("album_cover").toObject().value("url").toString()
-                );
-                this->interval_timer->start(1000);
+                );*/
+                this->interval_timer->start(this->interval);
             }
-            int seconds = this->local_progress / 1000;
-            qDebug() << "Progress:" << seconds / 60 << ":" << seconds % 60;
+        }
+    });
+}
+
+void SpotifyElaborator::analyzeAudio(QString track, QString artist_names) {
+    QUrl url("http://ws.audioscrobbler.com/2.0/");
+    QUrlQuery query;
+    query.addQueryItem("method", "track.gettoptags");
+    query.addQueryItem("artist", artist_names);
+    query.addQueryItem("track", track);
+    query.addQueryItem("api_key", this->lastfm_key);
+    query.addQueryItem("format", "json");
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    QNetworkReply *reply = manager->get(request);
+
+    connect(reply, &QNetworkReply::finished, [reply, this]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
+            QJsonObject toptags = json.value("toptags").toObject();
+            QJsonArray tags = toptags.value("tag").toArray();
+
+            double energy_score = 0.5; // Valore di partenza medio
+
+            // Analizziamo i tag della community per regolare l'energia
+            for (int i = 0; i < tags.size(); ++i) {
+                QString tagName = tags.at(i).toObject().value("name").toString().toLower();
+
+                if (tagName.contains("fast") || tagName.contains("metal") || tagName.contains("electronic") || tagName.contains("dance")) {
+                    energy_score += 0.1; // Alza il ritmo
+                }
+                if (tagName.contains("slow") || tagName.contains("acoustic") || tagName.contains("ambient") || tagName.contains("chill")) {
+                    energy_score -= 0.1; // Abbassa il ritmo
+                }
+            }
+
+            energy_score = qBound(0.1, energy_score, 1.0);
+            qDebug() << "Energia stimata da Last.fm:" << energy_score;
         }
     });
 }
@@ -97,31 +139,57 @@ void SpotifyElaborator::returnImageColor(QString imageUrl) {
         if(cover.isNull()) {
             return;
         }
-        QMap<QRgb, int> colorCount;
-        const int offset = 10;
+        QMap<QRgb, double> colorCount;
+        // assegna valori in base alla dist. dal centro
+        // dist. massima: lato * radq(2) / 2
+        const double diag = cover.width() * sqrt(2) / 2;
+        const int centerX = cover.width() / 2;
+        const int centerY = cover.height() / 2;
+        const int offset = 0;
         for (int y = offset; y < cover.height() - offset; ++y) {
             for (int x = offset; x < cover.width() - offset; ++x) {
                 QRgb pixel = cover.pixel(x, y);
                 QColor c(pixel);
 
-                if (c.value() < 30 || c.value() > 230 || c.saturation() < 30) {
+                if (c.value() < 40 || c.value() > 225 || c.saturation() < 45) {
                     continue;
                 }
 
-                const int scale_factor = 3;
+                const int scale_factor = 2;
                 int r = (c.red() >> scale_factor) << scale_factor;
                 int g = (c.green() >> scale_factor) << scale_factor;
                 int b = (c.blue() >> scale_factor) << scale_factor;
-                colorCount[qRgb(r, g, b)]++;
+                double dist = pow(x - centerX, 2) + pow(y - centerY, 2);
+                dist = sqrt(dist);
+                // dà più peso ai pixel sul bordo e a quelli più luminosi
+                colorCount[qRgb(r, g, b)] += (0.25 + dist / diag) * (c.value());
             }
         }
-        QRgb dom_color;
-        int max_value = 0;
+        QRgb dom_color(Qt::black);
+        double max_value = 0;
         for (auto it = colorCount.begin(); it != colorCount.end(); it++) {
             if(it.value() > max_value) {
                 max_value = it.value();
                 dom_color = it.key();
             }
+        }
+        if(colorCount.isEmpty()) {
+            int totalPixels = 0;
+            int tot_r = 0, tot_g = 0, tot_b = 0;
+            // calcola colore medio
+            for (int y = offset; y < cover.height() - offset; ++y) {
+                for (int x = offset; x < cover.width() - offset; ++x) {
+                    QRgb pixel = cover.pixel(x, y);
+                    QColor c(pixel);
+                    int r, g, b;
+                    c.getRgb(&r, &g, &b);
+                    tot_r += r;
+                    tot_g += g;
+                    tot_b += b;
+                    totalPixels++;
+                }
+            }
+            dom_color = qRgb(tot_r / totalPixels, tot_g / totalPixels, tot_b / totalPixels);
         }
         resultColor = QColor(dom_color);
         int r, g, b;
