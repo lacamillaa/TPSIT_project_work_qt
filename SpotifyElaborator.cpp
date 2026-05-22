@@ -78,11 +78,17 @@ void SpotifyElaborator::makePlaybackRequest() {
                 qDebug() << "Now playing: " + track_name + " by " + main_artist;
                 this->local_progress = result.value("offset").toInt();
                 analyzeAudio(track_name, artist_names);
-                /*this->returnImageColor(
-                    result.value("album_cover").toObject().value("url").toString()
-                );*/
+                this->local_color = this->returnImageColor(
+                    result.value("album_cover").toObject().value("url").toString());
                 this->interval_timer->start(this->interval);
             }
+            QJsonObject color_rgb;
+            int r, g, b;
+            this->local_color.getRgb(&r, &g, &b);
+            color_rgb["r"] = r;
+            color_rgb["g"] = g;
+            color_rgb["b"] = b;
+            result["color"] = color_rgb;
             this->interface->setPlayback(result);
         }
     });
@@ -92,7 +98,7 @@ double SpotifyElaborator::analyzeAudio(QString track, QString artist_names) {
     return 0.5;
 }
 
-void SpotifyElaborator::returnImageColor(QString imageUrl) {
+QColor SpotifyElaborator::returnImageColor(QString imageUrl) {
     QNetworkRequest req(imageUrl);
     QNetworkReply *reply = manager->get(req);
     QEventLoop loop;
@@ -104,7 +110,7 @@ void SpotifyElaborator::returnImageColor(QString imageUrl) {
         QImage cover;
         cover.loadFromData(arr);
         if(cover.isNull()) {
-            return;
+            return QColor(Qt::white);
         }
         QMap<QRgb, double> colorCount;
         // assegna valori in base alla dist. dal centro
@@ -159,8 +165,7 @@ void SpotifyElaborator::returnImageColor(QString imageUrl) {
             dom_color = qRgb(tot_r / totalPixels, tot_g / totalPixels, tot_b / totalPixels);
         }
         resultColor = QColor(dom_color);
-        int r, g, b;
-        resultColor.getRgb(&r, &g, &b);
-        qDebug() << r << g << b;
+        return resultColor;
     }
+    return resultColor;
 }

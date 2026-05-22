@@ -22,7 +22,7 @@ class SpotifyElaborator : public QObject
     Q_OBJECT
 public:
     explicit SpotifyElaborator(InterfaceHandler *interface);
-    void returnImageColor(QString imageUrl);
+    QColor returnImageColor(QString imageUrl);
     void setAccessToken(QString access_token);
     void setLastFMKey(QString api_key);
     void makePlaybackRequest();
@@ -40,6 +40,7 @@ private:
     QString lastfm_key;
     int local_progress;
     bool local_is_playing;
+    QColor local_color;
     QString currently_playing;
 
     void resetTimer(int newTimeout);

@@ -123,10 +123,15 @@ void InterfaceHandler::setup() {
 void InterfaceHandler::setPlayback(QJsonObject playback) {
     if(playback.value("is_valid").toBool()) {
         this->stackedWidget->setCurrentIndex(0);
-        this->titolo->setText(playback.value("name").toString());
+        QString titolo = playback.value("name").toString();
+        QFontMetrics metrics(this->titolo->font());
+        titolo = metrics.elidedText(titolo, Qt::ElideRight, this->titolo->width());
+        this->titolo->setText(titolo);
         QString main_artist = playback.value("main_artist").toString();
         QString album = playback.value("album_name").toString();
         QString format = QString("%1 - %2").arg(main_artist, album);
+        QFontMetrics metrics2(this->titolo->font());
+        format = metrics2.elidedText(format, Qt::ElideRight, this->artistaAlbum->width());
         this->artistaAlbum->setText(format);
         this->annoUscita->setText(playback.value("release_date").toString());
         int progress = playback.value("offset").toInt();
@@ -150,6 +155,21 @@ void InterfaceHandler::setPlayback(QJsonObject playback) {
             .arg(seconds);
         this->totalTime->setText(format_time);
         this->progressBar->setValue(progress * 100 / duration);
+        QJsonObject color = playback.value("color").toObject();
+        int r, g, b;
+        r = color.value("r").toInt();
+        g = color.value("g").toInt();
+        b = color.value("b").toInt();
+        double luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+        QString textColor;
+        if (luminance > 128) {
+            textColor = "#3d3d3d";
+        } else {
+            textColor = "#ffffff";
+        }
+        this->displayBox->setStyleSheet(QString("color: %1;").arg(textColor));
+        QString stylesheet = QString("background-color: rgb(%1, %2, %3)").arg(r).arg(g).arg(b);
+        this->widget1->setStyleSheet(stylesheet);
         QString image_url = playback.value("album_cover").toObject().value("url").toString();
         QNetworkAccessManager *manager = new QNetworkAccessManager();
         QNetworkRequest req((QUrl(image_url)));
