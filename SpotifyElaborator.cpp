@@ -83,6 +83,7 @@ void SpotifyElaborator::makePlaybackRequest() {
                 );*/
                 this->interval_timer->start(this->interval);
             }
+            this->interface->setPlayback(result);
         }
     });
 }

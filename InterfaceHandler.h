@@ -2,6 +2,8 @@
 #define INTERFACEHANDLER_H
 
 #include <QMainWindow>
+#include <QJsonObject>
+#include <QObject>
 #include <QWidget>
 #include <QStackedWidget>
 #include <QVBoxLayout>
@@ -10,6 +12,12 @@
 #include <QSlider>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrl>
+#include <QPixmap>
+#include <QJsonArray>
 
 class InterfaceHandler
 {
@@ -22,7 +30,7 @@ public:
 private:
     QMainWindow* parent;
 
-    QStackedWidget* widget;
+    QStackedWidget* stackedWidget;
     QWidget* widget1;
     QWidget* displayBox;
     QLabel* copertina;

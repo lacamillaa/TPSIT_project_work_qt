@@ -1,4 +1,5 @@
 #include "InterfaceHandler.h"
+#include <qnetworkreply.h>
 
 InterfaceHandler::InterfaceHandler(QMainWindow* parent) {
     this->parent = parent;
@@ -10,6 +11,7 @@ void InterfaceHandler::setup() {
 
     // Il QStackedWidget ci permette di switchare tra "WIDGET 1" e "WIDGET 2"
     QStackedWidget *stackedWidget = new QStackedWidget();
+    this->stackedWidget = stackedWidget;
 
     // ==========================================
     // WIDGET 1: LAYOUT DI RIPRODUZIONE
@@ -40,7 +42,7 @@ void InterfaceHandler::setup() {
     QVBoxLayout *infoLayout = new QVBoxLayout();
     QLabel *titolo = new QLabel("<b>TITOLO</b>");
     this->titolo = titolo;
-    titolo->setStyleSheet("border: none; font-size: 16px;");
+    titolo->setStyleSheet("border: none; font-size: 16px");
     QLabel *artistaAlbum = new QLabel("artista - album");
     this->artistaAlbum = artistaAlbum;
     artistaAlbum->setStyleSheet("border: none;");
@@ -67,6 +69,7 @@ void InterfaceHandler::setup() {
     progressBar->setStyleSheet("border: none;");
     progressBar->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     progressBar->setFocusPolicy(Qt::NoFocus);
+    progressBar->setRange(0, 100);
     this->progressBar = progressBar;
 
     QLabel *totalTime = new QLabel("3:21");
@@ -115,4 +118,60 @@ void InterfaceHandler::setup() {
     QVBoxLayout *mainLayout = new QVBoxLayout();
 
     parent->setCentralWidget(stackedWidget);
+}
+
+void InterfaceHandler::setPlayback(QJsonObject playback) {
+    if(playback.value("is_valid").toBool()) {
+        this->stackedWidget->setCurrentIndex(0);
+        this->titolo->setText(playback.value("name").toString());
+        QString main_artist = playback.value("main_artist").toString();
+        QString album = playback.value("album_name").toString();
+        QString format = QString("%1 - %2").arg(main_artist, album);
+        this->artistaAlbum->setText(format);
+        this->annoUscita->setText(playback.value("release_date").toString());
+        int progress = playback.value("offset").toInt();
+        int duration = playback.value("duration").toInt();
+        progress /= 1000;
+        duration /= 1000;
+        int minutes = progress / 60;
+        int seconds = progress % 60;
+        QString format_time = QString("%1%2:%3%4")
+            .arg(minutes < 10 ? "0" : "")
+            .arg(minutes)
+            .arg(seconds < 10 ? "0" : "")
+            .arg(seconds);
+        this->currentTime->setText(format_time);
+        minutes = duration / 60;
+        seconds = duration % 60;
+        format_time = QString("%1%2:%3%4")
+            .arg(minutes < 10 ? "0" : "")
+            .arg(minutes)
+            .arg(seconds < 10 ? "0" : "")
+            .arg(seconds);
+        this->totalTime->setText(format_time);
+        this->progressBar->setValue(progress * 100 / duration);
+        QString image_url = playback.value("album_cover").toObject().value("url").toString();
+        QNetworkAccessManager *manager = new QNetworkAccessManager();
+        QNetworkRequest req((QUrl(image_url)));
+        QNetworkReply *reply = manager->get(req);
+        QObject::connect(reply, &QNetworkReply::finished, [this, reply]() {
+            if (reply->error() == QNetworkReply::NoError) {
+                // Leggi i dati binari scaricati
+                QByteArray imageData = reply->readAll();
+                QPixmap pixmap;
+
+                // Carica l'immagine dai byte
+                if (pixmap.loadFromData(imageData)) {
+                    // Usa la tua QLabel (es. coverLabel)
+                    // Applica il ridimensionamento mantenendo le proporzioni
+                    this->copertina->setPixmap(pixmap.scaled(this->copertina->size(),
+                                                              Qt::KeepAspectRatio,
+                                                              Qt::SmoothTransformation));
+                }
+            } else {
+                this->copertina->setStyleSheet("color: black");
+                this->copertina->setText("Errore nel caricamento della copertina");
+            }
+        });
+    }
 }
