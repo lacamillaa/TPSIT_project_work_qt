@@ -1,8 +1,9 @@
 #include "SpotifyElaborator.h"
 #include <qjsonobject.h>
 
-SpotifyElaborator::SpotifyElaborator(QObject *parent) {
+SpotifyElaborator::SpotifyElaborator(InterfaceHandler *interface) {
     this->local_is_playing = false;
+    this->interface = interface;
     this->manager = new QNetworkAccessManager();
     this->timer = new QTimer();
     this->interval_timer = new QTimer();
@@ -66,6 +67,7 @@ void SpotifyElaborator::makePlaybackRequest() {
                     this->local_progress = fmax(this->local_progress, offset);
                 }
                 this->local_progress = fmin(this->local_progress, duration);
+                result["offset"] = this->local_progress;
             }
             else {
                 this->timer->stop();
@@ -73,7 +75,6 @@ void SpotifyElaborator::makePlaybackRequest() {
                 QString track_name = result.value("name").toString();
                 QString main_artist = result.value("main_artist").toString();
                 QString artist_names = result.value("artists_names").toString();
-                qDebug() << artist_names;
                 qDebug() << "Now playing: " + track_name + " by " + main_artist;
                 this->local_progress = result.value("offset").toInt();
                 analyzeAudio(track_name, artist_names);
@@ -86,43 +87,8 @@ void SpotifyElaborator::makePlaybackRequest() {
     });
 }
 
-void SpotifyElaborator::analyzeAudio(QString track, QString artist_names) {
-    QUrl url("http://ws.audioscrobbler.com/2.0/");
-    QUrlQuery query;
-    query.addQueryItem("method", "track.gettoptags");
-    query.addQueryItem("artist", artist_names);
-    query.addQueryItem("track", track);
-    query.addQueryItem("api_key", this->lastfm_key);
-    query.addQueryItem("format", "json");
-    url.setQuery(query);
-
-    QNetworkRequest request(url);
-    QNetworkReply *reply = manager->get(request);
-
-    connect(reply, &QNetworkReply::finished, [reply, this]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
-            QJsonObject toptags = json.value("toptags").toObject();
-            QJsonArray tags = toptags.value("tag").toArray();
-
-            double energy_score = 0.5; // Valore di partenza medio
-
-            // Analizziamo i tag della community per regolare l'energia
-            for (int i = 0; i < tags.size(); ++i) {
-                QString tagName = tags.at(i).toObject().value("name").toString().toLower();
-
-                if (tagName.contains("fast") || tagName.contains("metal") || tagName.contains("electronic") || tagName.contains("dance")) {
-                    energy_score += 0.1; // Alza il ritmo
-                }
-                if (tagName.contains("slow") || tagName.contains("acoustic") || tagName.contains("ambient") || tagName.contains("chill")) {
-                    energy_score -= 0.1; // Abbassa il ritmo
-                }
-            }
-
-            energy_score = qBound(0.1, energy_score, 1.0);
-            qDebug() << "Energia stimata da Last.fm:" << energy_score;
-        }
-    });
+double SpotifyElaborator::analyzeAudio(QString track, QString artist_names) {
+    return 0.5;
 }
 
 void SpotifyElaborator::returnImageColor(QString imageUrl) {

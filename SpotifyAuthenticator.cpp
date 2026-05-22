@@ -13,13 +13,15 @@ QString generateRandomString(int length) {
 }
 
 SpotifyAuthenticator::SpotifyAuthenticator(QString client_id, QString client_secret,
-    QString redirect_uri, QString lastfm) {
+    QString redirect_uri, QString lastfm, QMainWindow *window) {
     this->client_id = client_id;
     this->client_secret = client_secret;
     this->redirect_uri = redirect_uri;
     this->lastfm_api = lastfm;
+    this->interface = new InterfaceHandler(window);
+    this->interface->setup();
     m_server = new QTcpServer(this);
-    elab = new SpotifyElaborator(this);
+    elab = new SpotifyElaborator(this->interface);
     elab->setLastFMKey(lastfm);
     connect(m_server, &QTcpServer::newConnection, this, &SpotifyAuthenticator::onNewConnection);
 }

@@ -39,6 +39,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 qt_add_executable(qt-interface
 MANUAL_FINALIZATION
 ${PROJECT_SOURCES}
+InterfaceHandler.h InterfaceHandler.cpp
 )
 else()
 add_executable(qt-interface

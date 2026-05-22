@@ -1,4 +1,5 @@
 #include "SpotifyParser.h"
+#include "InterfaceHandler.h"
 #include "SpotifyElaborator.h"
 
 #include <QTcpServer>
@@ -16,7 +17,7 @@ class SpotifyAuthenticator : public QObject {
     Q_OBJECT
 public:
     explicit SpotifyAuthenticator(QString client_id, QString client_secret,
-        QString redirect_uri, QString lastfm_api);
+        QString redirect_uri, QString lastfm_api, QMainWindow *window);
     void startListening();
     void makeAuthCall();
     void disconnectUser();
@@ -29,6 +30,7 @@ private slots:
 private:
     SpotifyElaborator *elab;
     QTcpServer *m_server;
+    InterfaceHandler *interface;
     bool is_connected = false;
     QString client_id;
     QString client_secret;

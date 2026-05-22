@@ -2,6 +2,7 @@
 #define SPOTIFYELABORATOR_H
 
 #include "SpotifyParser.h"
+#include "InterfaceHandler.h"
 
 #include <QObject>
 #include <QNetworkAccessManager>
@@ -20,17 +21,18 @@ class SpotifyElaborator : public QObject
 {
     Q_OBJECT
 public:
-    explicit SpotifyElaborator(QObject *parent);
+    explicit SpotifyElaborator(InterfaceHandler *interface);
     void returnImageColor(QString imageUrl);
     void setAccessToken(QString access_token);
     void setLastFMKey(QString api_key);
     void makePlaybackRequest();
-    void analyzeAudio(QString track, QString artist_names);
+    double analyzeAudio(QString track, QString artist_names);
 
 private:
     QNetworkAccessManager *manager;
     QTimer *timer;
     QTimer *interval_timer;
+    InterfaceHandler *interface;
 
     const int interval = 200;
 

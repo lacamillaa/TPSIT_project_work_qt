@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     MainWindow window;
 
     SpotifyAuthenticator auth = SpotifyAuthenticator(client_id, client_secret,
-                                                     redirect_uri, lastfm_api);
+                                                     redirect_uri, lastfm_api, &window);
     auth.startListening();
     auth.makeAuthCall();
 
