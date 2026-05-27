@@ -77,7 +77,7 @@ void SpotifyElaborator::makePlaybackRequest() {
                 QString artist_names = result.value("artists_names").toString();
                 qDebug() << "Now playing: " + track_name + " by " + main_artist;
                 this->local_progress = result.value("offset").toInt();
-                analyzeAudio(track_name, artist_names);
+                qDebug() << this->analyzeAudio(result.value("isrc").toString());
                 this->local_color = this->returnImageColor(
                     result.value("album_cover").toObject().value("url").toString());
                 this->interval_timer->start(this->interval);
@@ -94,8 +94,24 @@ void SpotifyElaborator::makePlaybackRequest() {
     });
 }
 
-double SpotifyElaborator::analyzeAudio(QString track, QString artist_names) {
-    return 0.5;
+double SpotifyElaborator::analyzeAudio(QString isrc) {
+    QString url = QString("https://api.deezer.com/track/isrc:%1").arg(isrc);
+    QNetworkRequest req((QUrl(url)));
+    QNetworkReply *reply = manager->get(req);
+    double res = 0.5;
+    connect(reply, &QNetworkReply::finished, this, [&res, reply](){
+        if(reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            QJsonDocument doc = QJsonDocument::fromJson(response);
+            QJsonObject obj = doc.object();
+            res = obj.value("bpm").toDouble(0);
+        }
+        else {
+            qDebug() << reply->errorString();
+            res = 0.5;
+        }
+    });
+    return res;
 }
 
 QColor SpotifyElaborator::returnImageColor(QString imageUrl) {
@@ -135,7 +151,7 @@ QColor SpotifyElaborator::returnImageColor(QString imageUrl) {
                 double dist = pow(x - centerX, 2) + pow(y - centerY, 2);
                 dist = sqrt(dist);
                 // dà più peso ai pixel sul bordo e a quelli più luminosi
-                colorCount[qRgb(r, g, b)] += (0.25 + dist / diag) * (c.value());
+                colorCount[qRgb(r, g, b)] += (dist / diag) * (c.value());
             }
         }
         QRgb dom_color(Qt::black);

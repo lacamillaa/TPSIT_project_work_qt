@@ -13,6 +13,10 @@ QJsonObject SpotifyParser::parsePlayback(QJsonObject playback) {
     parse.insert("offset", playback.value("progress_ms").toInt());
     QJsonObject item = playback.value("item").toObject();
     parse.insert("id", item.value("id").toString());
+    QString isrc = playback.value("item").toObject()
+                       .value("external_ids").toObject()
+                       .value("isrc").toString();
+    parse.insert("isrc", isrc);
     parse.insert("name", item.value("name").toString());
     parse.insert("duration", item.value("duration_ms").toInt());
     QJsonArray arr = item.value("artists").toArray();

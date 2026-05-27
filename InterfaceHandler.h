@@ -2,6 +2,7 @@
 #define INTERFACEHANDLER_H
 
 #include <QMainWindow>
+#include <QDateTime>
 #include <QJsonObject>
 #include <QObject>
 #include <QFontMetrics>
@@ -27,6 +28,7 @@ public:
     void setup();
     void setPlayback(QJsonObject playback);
     void disconnect();
+    void setError(QString errorString);
 
 private:
     QMainWindow* parent;

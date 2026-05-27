@@ -26,7 +26,7 @@ public:
     void setAccessToken(QString access_token);
     void setLastFMKey(QString api_key);
     void makePlaybackRequest();
-    double analyzeAudio(QString track, QString artist_names);
+    double analyzeAudio(QString isrc);
 
 private:
     QNetworkAccessManager *manager;

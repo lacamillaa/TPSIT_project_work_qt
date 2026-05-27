@@ -1,4 +1,5 @@
 #include "InterfaceHandler.h"
+
 #include <qnetworkreply.h>
 
 InterfaceHandler::InterfaceHandler(QMainWindow* parent) {
@@ -194,4 +195,15 @@ void InterfaceHandler::setPlayback(QJsonObject playback) {
             }
         });
     }
+}
+
+void InterfaceHandler::setError(QString errorString) {
+    QString date = QDateTime::currentDateTime().toString();
+    QString errorStr = QString("%1 %2").arg(errorString).arg(date);
+    this->messaggioErrore->setText(errorStr);
+}
+
+void InterfaceHandler::disconnect() {
+    this->setError("L'utente è stato disconnesso");
+    this->stackedWidget->setCurrentIndex(1);
 }
